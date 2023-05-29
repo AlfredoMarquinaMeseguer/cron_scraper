@@ -9,7 +9,7 @@ def scraper_cron_job():
 
     job.minute.every(1)
 
-    cron.write()
+    cron.write("stdout")
 
 
 # Press the green button in the gutter to run the script.
