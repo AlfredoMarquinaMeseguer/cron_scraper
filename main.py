@@ -1,4 +1,5 @@
 import datetime
+import os
 import shutil
 import time
 
@@ -16,6 +17,7 @@ if __name__ == "__main__":
     schedule.every(5).seconds.do(imprime.prueba)
 
     while True:
-        print("hola 2")
+        a = os.environ["MONGO_CONN"]
+        print(type(a), a)
         schedule.run_pending()
         time.sleep(1)
