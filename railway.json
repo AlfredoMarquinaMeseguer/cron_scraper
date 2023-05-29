@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "apt-get update && apt-get install -y cron && crontab /app/cron-test.txt",
+    "startCommand": "apt-get update && export RUNLEVEL=1 && apt-get install -y cron && crontab /app/cron-test.txt",
     "numReplicas": 1,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
