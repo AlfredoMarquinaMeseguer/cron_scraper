@@ -10,7 +10,7 @@ def imprime_hora():
 
 
 if __name__ == "__main__":
-    schedule.every(1).minutes.do(imprime_hora)
+    schedule.every(5).seconds.do(imprime_hora)
 
     while True:
         schedule.run_pending()
