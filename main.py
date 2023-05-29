@@ -5,7 +5,7 @@ from crontab import CronTab
 def scraper_cron_job():
     cron = CronTab(user="root")
     # job = cron.new(command='/usr/bin/python3 /app/master_of_scrapers.py')
-    job = cron.new(command='echo "hello"')
+    job = cron.new(command='/usr/bin/python3 /app/imprime.py')
 
     job.minute.every(1)
 
