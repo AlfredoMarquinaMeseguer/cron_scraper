@@ -2,7 +2,8 @@ import datetime
 
 import classes
 
-if __name__ == "__main__":
+
+def prueba():
     a = classes.dao.UserInDB(username="test", hashed_password="1")
     a.full_name = "Test"
 
@@ -11,4 +12,7 @@ if __name__ == "__main__":
     a.email = "test@test.com"
 
     classes.connect_to_users().update_one({"_id": a.mongo_id}, {"$set": a.to_mongo()})
+
+
+if __name__ == "__main__":
     print("tes", datetime.datetime.now())
