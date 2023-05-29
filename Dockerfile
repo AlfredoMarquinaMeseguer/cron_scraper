@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y cron
 COPY . /app/.
 
 # Install the requirements
-RUN pip3 install -r requirements.txt
+RUN pip3 install -r /app/requirements.txt
 
 # Add the cron job
 RUN crontab /app/cron-test.txt
