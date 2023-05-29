@@ -12,4 +12,4 @@ RUN pip3 install -r /app/requirements.txt
 RUN crontab /app/cron-test.txt
 
 # Start the cron service and run the script
-CMD cron
+CMD cron && python3 /app/main.py
