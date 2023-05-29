@@ -1,1 +1,1 @@
-* * * * * /usr/bin/python3 /app/imprime.py
+* * * * * /usr/bin/python3 /app/imprime.py > /proc/$(cat /var/run/crond.pid)/fd/1 2>&1
