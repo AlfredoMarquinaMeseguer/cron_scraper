@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "apt-get install -y crontab && crontab /app/cron-test.txt && cron && python3 /app/main.py",
+    "startCommand": "apt-get update && apt-get install -y cron && crontab /app/cron-test.txt && cron && python3 /app/main.py",
     "numReplicas": 1,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
