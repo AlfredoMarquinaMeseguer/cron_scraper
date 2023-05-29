@@ -3,8 +3,8 @@ from crontab import CronTab
 
 
 def scraper_cron_job():
-    cron = CronTab()
-    # job = cron.new(command='python3 cron_scraper/master_of_scrapers.py')
+    cron = CronTab(user="root")
+    # job = cron.new(command='/usr/bin/python3 /app/master_of_scrapers.py')
     job = cron.new(command='echo "hello"')
 
     job.minute.every(1)
