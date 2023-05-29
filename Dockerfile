@@ -16,7 +16,7 @@ COPY cron-test.txt /etc/cron.d/cron-test.txt
 RUN chmod 0644 /etc/cron.d/cron-test.txt && crontab /etc/cron.d/cron-test.txt
 
 # Start the cron service and run the script
-CMD whic python3
+CMD which python3
 #CMD cron && python3 /app/main.py
 
 #ENTRYPOINT ["bash", "-c", "service cron start && /app"]
