@@ -10,10 +10,10 @@ COPY . /app/.
 RUN pip3 install -r /app/requirements.txt
 
 # Add the cron job
-RUN crontab /app/cron-test.txt
+#RUN crontab /app/cron-test.txt
 
 COPY cron-test.txt /etc/cron.d/cron-test.txt
-RUN chmod 0644 /etc/cron.d//etc/cron.d/cron-test.txt && crontab /etc/cron.d/cron-test.txt \
+RUN chmod 0644 /etc/cron.d/cron-test.txt && crontab /etc/cron.d/cron-test.txt \
 
 # Start the cron service and run the script
 # CMD cron && python3 /app/main.py
