@@ -13,9 +13,9 @@ RUN pip3 install -r /app/requirements.txt
 #RUN crontab /app/cron-test.txt
 
 COPY cron-test.txt /etc/cron.d/cron-test.txt
-RUN chmod 0644 /etc/cron.d/cron-test.txt && crontab /etc/cron.d/cron-test.txt \
+RUN chmod 0644 /etc/cron.d/cron-test.txt && crontab /etc/cron.d/cron-test.txt
 
 # Start the cron service and run the script
-# CMD cron && python3 /app/main.py
+#CMD cron && python3 /app/main.py
 
 ENTRYPOINT ["bash", "-c", "service cron start && /app"]
