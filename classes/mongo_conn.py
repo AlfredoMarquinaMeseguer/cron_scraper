@@ -52,6 +52,9 @@ def obtain_collection_environ(collection: AvailableCollection) -> pymongo.collec
     import os
     mongo_connection = os.environ[CONN]
     db = os.environ.get(DB)
+    print(type(mongo_connection), mongo_connection)
+    print(type(db), db)
+
     return pymongo.MongoClient(mongo_connection)[db][collection.value]
 
 
