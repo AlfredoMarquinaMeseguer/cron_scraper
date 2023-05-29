@@ -20,27 +20,27 @@ POSSIBLE_PATHS = ["conf/config.ini", "classes/conf/config.ini", "final_scraper/c
 
 
 # TODO: currently using this one, Change to the environ one.
-def obtain_collection_file(selected_collection: AvailableCollection) -> pymongo.collection.Collection:
-    """
-    Obtains a mongo collection made from options in the fiel config.ini.
-    :param selected_collection: Indicates collections to use.
-    :return: The PyMongo collections you where searching for.
-    """
-
-    config = configparser.ConfigParser()
-
-    num = 0
-    while num < len(POSSIBLE_PATHS) and len(config.items()) == 1:  # I honestly don't know which one is the correct one
-        config.read(POSSIBLE_PATHS[num])
-        num += 1
-    del num
-
-    # config.read("/home/alfredo/Documents/GitHub/ProyectoFinalDAM/Job_scraper/const_and_utils/config.ini")
-    mongo_connection = config.get('ATLAS', 'MONGO_CONN')
-    db = config.get('database', 'DB')
-    collection = config.get('database', selected_collection.value)
-
-    return pymongo.MongoClient(mongo_connection)[db][collection]
+# def obtain_collection_file(selected_collection: AvailableCollection) -> pymongo.collection.Collection:
+#     """
+#     Obtains a mongo collection made from options in the fiel config.ini.
+#     :param selected_collection: Indicates collections to use.
+#     :return: The PyMongo collections you where searching for.
+#     """
+#
+#     config = configparser.ConfigParser()
+#
+#     num = 0
+#     while num < len(POSSIBLE_PATHS) and len(config.items()) == 1:  # I honestly don't know which one is the correct one
+#         config.read(POSSIBLE_PATHS[num])
+#         num += 1
+#     del num
+#
+#     # config.read("/home/alfredo/Documents/GitHub/ProyectoFinalDAM/Job_scraper/const_and_utils/config.ini")
+#     mongo_connection = config.get('ATLAS', 'MONGO_CONN')
+#     db = config.get('database', 'DB')
+#     collection = config.get('database', selected_collection.value)
+#
+#     return pymongo.MongoClient(mongo_connection)[db][collection]
 
 
 def obtain_collection_environ(collection: AvailableCollection) -> pymongo.collection.Collection:
@@ -56,15 +56,15 @@ def obtain_collection_environ(collection: AvailableCollection) -> pymongo.collec
 
 
 def connect_to_offers() -> pymongo.collection.Collection:
-    return obtain_collection_file(AvailableCollection.OFFERS)
+    return obtain_collection_environ(AvailableCollection.OFFERS)
 
 
 def connect_to_users() -> pymongo.collection.Collection:
-    return obtain_collection_file(AvailableCollection.USERS)
+    return obtain_collection_environ(AvailableCollection.USERS)
 
 
 def connect_to_petitions() -> pymongo.collection.Collection:
-    return obtain_collection_file(AvailableCollection.PETITIONS)
+    return obtain_collection_environ(AvailableCollection.PETITIONS)
 
 
 def update_env_from_file(file_path):
