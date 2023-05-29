@@ -12,8 +12,10 @@ def imprime_hora():
 
 
 if __name__ == "__main__":
+    print("hola 1")
     schedule.every(5).seconds.do(imprime.prueba)
 
     while True:
+        print("hola 2")
         schedule.run_pending()
         time.sleep(1)
