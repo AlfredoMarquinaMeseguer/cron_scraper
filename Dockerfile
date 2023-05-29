@@ -18,6 +18,6 @@ RUN crontab /app/cron-test.txt
 # Start the cron service and run the script
 
 # CMD service cron start  &&
-CMD  python3 /app/main.py
+CMD ip -a &&  python3 /app/main.py
 
 #ENTRYPOINT ["bash", "-c", "service cron start && /app"]

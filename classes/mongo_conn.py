@@ -50,7 +50,7 @@ def obtain_collection_environ(collection: AvailableCollection) -> pymongo.collec
     :return: The PyMongo collections you where searching for.
     """
     import os
-    mongo_connection = os.environ[CONN]
+    mongo_connection = str(os.environ[CONN])
     db = os.environ.get(DB)
 
     return pymongo.MongoClient(mongo_connection)[db][collection.value]

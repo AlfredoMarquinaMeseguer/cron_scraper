@@ -17,7 +17,5 @@ if __name__ == "__main__":
     schedule.every(5).seconds.do(imprime.prueba)
 
     while True:
-        a = os.environ["MONGO_CONN"]
-        print(type(a), a)
         schedule.run_pending()
         time.sleep(1)
