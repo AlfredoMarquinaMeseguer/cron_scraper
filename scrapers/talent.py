@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 import logging
 import classes.offer_consts as offer
 from classes.dao import Source, Offer, Petition
-from offer_scraper.scrapers.utils import wait
+from scrapers.utils import wait
 
 TOO_MANY_RETRIES = "Talent page scrap: Too many retries"
 
@@ -209,43 +209,47 @@ async def scrap(petition: Petition, radius: str = 100) -> list[dict]:
         :param radius: Maximus distance to the location. Defaults to 100.
         :return: List of all the job offers found.
     """
-    url = SEARCH.format(petition.query, petition if petition.location is not None else "Spain", str(radius))
-    tasks = []
-    page_number = current_page_number = 1
-    soup = None
-
+    url = SEARCH.format(petition.query, petition.location if petition.location is not None else "Spain", str(radius))
     try:
-        current_page_number, soup = await get_search_page(page_number, url)
-        scraped = True
-    except Exception:
-        scraped = False
 
-    # Should have been a do while loop
-    while page_number == current_page_number:
-        if scraped:  # TODO: Dudas
-            # tasks.append(asyncio.create_task(async_scraping_page(soup)))
-            tasks.extend(await async_scraping_page(soup, petition))
-            page_number += 1
-            wait.loading()
+        tasks = []
+        page_number = current_page_number = 1
+        soup = None
 
-            try:  # TODO: pensar en algo que lo haga mejor
-                current_page_number, soup = await get_search_page(page_number, url)
-                scraped = True
-            except Exception:
-                scraped = False
-                # print("no cargado")
+        try:
+            current_page_number, soup = await get_search_page(page_number, url)
+            scraped = True
+        except Exception:
+            scraped = False
 
-            current_page_number = int(soup.find(**CURRENT_PAGE_NUMBER_ATTR).get_text())
-            await asyncio.sleep(1)  # Limit to not collapse the server
-        else:
+        # Should have been a do while loop
+        while page_number == current_page_number:
+            if scraped:  # TODO: Dudas
+                # tasks.append(asyncio.create_task(async_scraping_page(soup)))
+                tasks.extend(await async_scraping_page(soup, petition))
+                page_number += 1
+                await wait.loading()
 
-            try:
-                current_page_number, soup = await get_search_page(page_number, url)
-                scraped = True
-            except Exception:
-                scraped = False
+                try:  # TODO: pensar en algo que lo haga mejor
+                    current_page_number, soup = await get_search_page(page_number, url)
+                    scraped = True
+                except Exception:
+                    scraped = False
+                    # print("no cargado")
 
-    return tasks
+                current_page_number = int(soup.find(**CURRENT_PAGE_NUMBER_ATTR).get_text())
+                await asyncio.sleep(1)  # Limit to not collapse the server
+            else:
+
+                try:
+                    current_page_number, soup = await get_search_page(page_number, url)
+                    scraped = True
+                except Exception:
+                    scraped = False
+
+        return tasks
+    except Exception as e:
+        logging.error(f"There was an error scraping {url} the error: {e}")
 
 
 async def get_search_page(page_number, url):
@@ -262,29 +266,32 @@ async def get_http(new_url):
     return page
 
 
-async def async_scraping_page(soup: bs4.BeautifulSoup, petition: Petition) -> list[dict]:
-    jobs_set: bs4.ResultSet = soup.find_all("section", attrs={CLASS: "card card__job"})
-    num_sub_lists = 3
+async def async_scraping_page(soup: bs4.BeautifulSoup, petition: Petition) -> list[dict]|None:
+    try:
+        jobs_set: bs4.ResultSet = soup.find_all("section", attrs={CLASS: "card card__job"})
+        num_sub_lists = 3
 
-    # calculate the length of each sublist
-    sublist_length = len(jobs_set) // num_sub_lists + (0 if len(jobs_set) % num_sub_lists == 0 else 1)
+        # calculate the length of each sublist
+        sublist_length = len(jobs_set) // num_sub_lists + (0 if len(jobs_set) % num_sub_lists == 0 else 1)
 
-    # create the smaller sub_lists
-    sub_lists = [jobs_set[i:i + sublist_length] for i in range(0, len(jobs_set), sublist_length)]
+        # create the smaller sub_lists
+        sub_lists = [jobs_set[i:i + sublist_length] for i in range(0, len(jobs_set), sublist_length)]
 
-    tasks = []
-    for i in sub_lists:
-        task = asyncio.create_task(async_scrap_jobs(i, petition))
-        tasks.append(task)
+        tasks = []
+        for i in sub_lists:
+            task = asyncio.create_task(async_scrap_jobs(i, petition))
+            tasks.append(task)
 
-    results = await asyncio.gather(*tasks)
+        results = await asyncio.gather(*tasks)
 
-    end = []
-    for i in results:
-        end.extend(i)
+        end = []
+        for i in results:
+            end.extend(i)
 
-    return end
-
+        return end
+    except Exception as e:
+        logging.error(f"There was an error scraping talent the error: {e}")
+        return None
     # Con compresión de listas, Tras la prueba esto parece incluso más lento
     # return [item for sublist in results for item in sublist]
 
@@ -328,9 +335,9 @@ async def async_scrap_jobs(job_list: list[bs4.element.Tag], petition: Petition) 
             dictionary[offer.LINK_JOB] = "https://es.talent.com/view?id=" + dictionary.get(offer.ID)
 
             # Obtener info del trabajo
-            wait.limit()
+            await wait.limit()
             job_page = await get_http(dictionary.get(offer.LINK_JOB))
-            wait.limit()
+            await wait.limit()
             job_page_soup = BeautifulSoup(job_page.content, PARSER)
 
             # # If is null is maybe because the page hasn't loaded yet

@@ -20,7 +20,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from classes import offer_consts
 from classes.dao import Petition, Offer, Source
-from offer_scraper.scrapers.utils import common, wait
+from scrapers.utils import common, wait
 
 ROOT_URL = "https://www.infoempleo.com"
 MAIN_URL = ROOT_URL + "/trabajo/"
@@ -46,11 +46,11 @@ async def scrap(petition: Petition) -> [dict[str, any]]:
     driver.get(MAIN_URL)
 
     # Get rid of pop-ups
-    wait.loading()
+    await wait.loading()
     driver.find_element(By.CSS_SELECTOR, "#onetrust-pc-btn-handler").click()  # Personalize cookies
-    wait.limit()
+
     driver.find_element(By.CSS_SELECTOR, ".save-preference-btn-handler").click()  # Only accept necesary
-    wait.limit()
+    await wait.limit()
     driver.find_element(By.CSS_SELECTOR, "span.close:nth-child(1)").click()  # Get rid of other pop-up
 
     driver.find_element(By.ID, "search").send_keys(petition.query)
@@ -60,7 +60,7 @@ async def scrap(petition: Petition) -> [dict[str, any]]:
     driver.find_element(By.CSS_SELECTOR, ".btn-line > span").click()
 
     # Get rid of new pop-up
-    wait.loading()
+    await wait.loading()
     driver.find_element(By.CSS_SELECTOR, "span.close:nth-child(1)").click()
 
     soup = BeautifulSoup(driver.page_source, "html.parser")
@@ -94,130 +94,122 @@ async def scrap(petition: Petition) -> [dict[str, any]]:
 
 
 async def scrap_page(url: str, petition: Petition) -> None:
-    # 0:02:34.392560
-    # driver: webdriver.firefox.webdriver.WebDriver = webdriver.Firefox()
-    #
-    # # driver: webdriver.firefox.webdriver.WebDriver = headless_webdriver()
-    # driver.get(url)
-    # soup = BeautifulSoup(driver.page_source, "html.parser")
-    # driver.quit()
-
-    # 0: 00:03.770957
-    # TODO: limit petitions I don't know how in async
     try:
-        wait.limit()
-        async with httpx.AsyncClient() as client:
-            r = await client.get(url, timeout=10)
-    except Exception:
-        return None
-    soup = BeautifulSoup(r.text, "lxml")
-    dom: lxml.etree.Element = etree.HTML(str(soup))
-    # print(r.text)
-    # try:
-    #     # Get rid of pop-ups
-    #     time.sleep(2)  # Wait for pop-ups to load
-    #     driver.find_element(By.CSS_SELECTOR, "#onetrust-pc-btn-handler").click()  # Personalize cookies
-    #     time.sleep(1)  # Wait for cookies page to load
-    #     driver.find_element(By.CSS_SELECTOR, ".save-preference-btn-handler").click()  # Only accept necesary
-    #
-    #     driver.find_element(By.CSS_SELECTOR, "span.close:nth-child(1)").click()  # Get rid of other pop-up
-    #     pass
-    # except Exception as e:
-    #     pass
-    # finally:
-    #     soup = BeautifulSoup(driver.page_source, "html.parser")
-    #     driver.quit()
+        try:
+            await wait.limit()
+            async with httpx.AsyncClient() as client:
+                r = await client.get(url, timeout=10)
+        except Exception:
+            return None
+        soup = BeautifulSoup(r.text, "lxml")
+        dom: lxml.etree.Element = etree.HTML(str(soup))
+        # print(r.text)
+        # try:
+        #     # Get rid of pop-ups
+        #     time.sleep(2)  # Wait for pop-ups to load
+        #     driver.find_element(By.CSS_SELECTOR, "#onetrust-pc-btn-handler").click()  # Personalize cookies
+        #     time.sleep(1)  # Wait for cookies page to load
+        #     driver.find_element(By.CSS_SELECTOR, ".save-preference-btn-handler").click()  # Only accept necesary
+        #
+        #     driver.find_element(By.CSS_SELECTOR, "span.close:nth-child(1)").click()  # Get rid of other pop-up
+        #     pass
+        # except Exception as e:
+        #     pass
+        # finally:
+        #     soup = BeautifulSoup(driver.page_source, "html.parser")
+        #     driver.quit()
 
-    # if type(prueba) == list:
-    #     algo = prueba[0].text
-    # else:
-    #     algo = prueba.text
-    # province = province_and_time[0].strip().replace("\xa0", "")
-    # time_ = province_and_time[1].split()
-    # print()
-    company = soup.find("li", attrs={"class": "companyname"})
-    dictionary = {TITLE_K: soup.find("h1", attrs={"class": "h1 regular"}).get_text(),
-                  COMPANY_K: company.get_text(),
-                  ID_K: soup.find("li", attrs={"class": "ref"}).get_text().removeprefix("Ref: "),
-                  'link_job': url
-                  }
-    link_company = company.find("a").attrs.get("href")
-    dictionary['link_company'] = absolute_url(link_company)  # TODO: preguntar si
+        # if type(prueba) == list:
+        #     algo = prueba[0].text
+        # else:
+        #     algo = prueba.text
+        # province = province_and_time[0].strip().replace("\xa0", "")
+        # time_ = province_and_time[1].split()
+        # print()
+        company = soup.find("li", attrs={"class": "companyname"})
+        dictionary = {TITLE_K: soup.find("h1", attrs={"class": "h1 regular"}).get_text(),
+                      COMPANY_K: company.get_text(),
+                      ID_K: soup.find("li", attrs={"class": "ref"}).get_text().removeprefix("Ref: "),
+                      'link_job': url
+                      }
+        link_company = company.find("a").attrs.get("href")
+        dictionary['link_company'] = absolute_url(link_company)  # TODO: preguntar si
 
-    logo = soup.find("li", attrs={"style": "margin-right:1rem"})
-    if logo is not None:
-        link_logo = logo("img")[0].get("src")
-        dictionary['link_logo'] = absolute_url(link_logo)
+        logo = soup.find("li", attrs={"style": "margin-right:1rem"})
+        if logo is not None:
+            link_logo = logo("img")[0].get("src")
+            dictionary['link_logo'] = absolute_url(link_logo)
 
-    location = soup.find("li", attrs={"class": "block"}).get_text()
-    if (sep := location.find("(")) != -1:
-        dictionary['city'] = location[:sep].strip()
-        dictionary['province'] = location[sep + 1: location.rfind(")")]
-    else:
-        dictionary['province'] = location.strip()
-    # offer_data: [str] = []
-    # # company_link = offer_data.find_all("ul")
-    # for ul in soup.find("div", attrs={"class": "offer-excerpt"}).find_all("ul"):
-    #     for li in ul.find_all("li"): <li style="margin-right:1rem"><a href="/colaboradoras/adecco/presentacion/"><img src="https://cdnazure.infoempleo.com/infoempleo.empresas/images/logos/LOGO ADECCO.gif" alt="Adecco" width="115" height="54"></a></li><li class="companyname"><a href="/colaboradoras/adecco/presentacion/">Adecco</a></li><li class="ref">Ref: 2940055</li>
-    #         offer_data.append(li.find("p").get_text())
+        location = soup.find("li", attrs={"class": "block"}).get_text()
+        if (sep := location.find("(")) != -1:
+            dictionary['city'] = location[:sep].strip()
+            dictionary['province'] = location[sep + 1: location.rfind(")")]
+        else:
+            dictionary['province'] = location.strip()
+        # offer_data: [str] = []
+        # # company_link = offer_data.find_all("ul")
+        # for ul in soup.find("div", attrs={"class": "offer-excerpt"}).find_all("ul"):
+        #     for li in ul.find_all("li"):
+        #         offer_data.append(li.find("p").get_text())
 
-    offer_data: [str] = [li.find("p").get_text() for ul in
-                         soup.find("div", attrs={"class": "offer-excerpt"}).find_all("ul") for li in ul.find_all("li")]
-    # El primero es la experiencia
+        offer_data: [str] = [li.find("p").get_text() for ul in
+                             soup.find("div", attrs={"class": "offer-excerpt"}).find_all("ul") for li in ul.find_all("li")]
+        # El primero es la experiencia
 
-    dictionary['experience_min'] = dom.xpath('/html/body/div[1]/div[4]/div/section/div[5]/div/div/ul/li[1]')[0].text
-    # El segundo es el salario
-    # El único que he encontrado: Entre 10.000 y 15.000€ Brutos/anuales
-    try:
-        salario = dom.xpath('/html/body/div[1]/div[4]/div/section/div[1]/ul[1]/li[2]/p')[0].text
-        if salario != "Retribución sin especificar":
-            # foo = salario.split()  # TODO: cambiar nombre variable company_link algo util
-            dictionary[offer_consts.SALARY_MIN] = common.salary_to_int(salario)
-            dictionary[offer_consts.SALARY_MAX] = common.salary_to_int(salario)
-            dictionary[offer_consts.SALARY_PERIOD] = salario
+        dictionary['experience_min'] = dom.xpath('/html/body/div[1]/div[4]/div/section/div[5]/div/div/ul/li[1]')[0].text
+        # El segundo es el salario
+        # El único que he encontrado: Entre 10.000 y 15.000€ Brutos/anuales
+        try:
+            salario = dom.xpath('/html/body/div[1]/div[4]/div/section/div[1]/ul[1]/li[2]/p')[0].text
+            if salario != "Retribución sin especificar":
+                # foo = salario.split()  # TODO: cambiar nombre variable company_link algo util
+                dictionary[offer_consts.SALARY_MIN] = common.salary_to_int(salario)
+                dictionary[offer_consts.SALARY_MAX] = common.salary_to_int(salario)
+                dictionary[offer_consts.SALARY_PERIOD] = salario
 
+        except Exception as e:
+            logging.error(f"Algo petó obteniendo el salario de Infoempleo. Mensaje: {e}")
+        # El tercero es Área-Puesto se mapea company_link category
+        area_puesto: [str] = offer_data[2].split("-")
+        dictionary[offer_consts.CATEGORY] = area_puesto[0]
+
+        position = area_puesto[1].find("'")
+        dictionary[offer_consts.SUBCATEGORY]: str = \
+            area_puesto[1][:position if position != -1 else len(area_puesto[1])].split("Categoría")[0].strip()
+
+        # El cuarto es Categoría o nivel
+
+        hace: [str] = soup.find("li", attrs={"class": "mt10"}).get_text().split()
+
+        if len(hace) >= HACE_NORMAL_LEN:
+            match hace[2]:
+                case "horas" | "hora":
+                    subtract_time = datetime.timedelta(hours=int(hace[1]))
+                case "días":
+                    subtract_time = datetime.timedelta(days=int(hace[1]))
+                case _:
+                    subtract_time = datetime.timedelta(minutes=0)
+        else:
+            subtract_time = datetime.timedelta(minutes=0)
+
+        dictionary['post_date'] = (datetime.datetime.now() - subtract_time).date()
+        dictionary['add_date'] = datetime.date.today()
+
+        description = soup.find("div", attrs={"class": "offer"})
+        dictionary[DESCRIPTION_K] = description.get_text().replace("Descripción de la oferta", "")
+
+        dictionary['requirement_min'] = description.find_all("pre")[1].get_text()
+
+        # return dictionary
+        # TODO: cambiar para recibir petición de api clases como Parametro
+
+        Offer.from_scrapped(dictionary, Source.INFO_EMPLEO, petition.mongo_id).save()
+        # return Job.from_scrapped(dictionary, Source.INFO_EMPLEO, petition.mongo_id).to_mongo()
+        # return dictionary
     except Exception as e:
-        logging.error(f"Algo petó obteniendo el salario de Infoempleo. Mensaje: {e}")
-    # El tercero es Área-Puesto se mapea company_link category
-    area_puesto: [str] = offer_data[2].split("-")
-    dictionary[offer_consts.CATEGORY] = area_puesto[0]
-
-    position = area_puesto[1].find("'")
-    dictionary[offer_consts.SUBCATEGORY]: str = \
-        area_puesto[1][:position if position != -1 else len(area_puesto[1])].split("Categoría")[0].strip()
-
-    # El cuarto es Categoría o nivel
-
-    hace: [str] = soup.find("li", attrs={"class": "mt10"}).get_text().split()
-
-    if len(hace) >= HACE_NORMAL_LEN:
-        match hace[2]:
-            case "horas" | "hora":
-                subtract_time = datetime.timedelta(hours=int(hace[1]))
-            case "días":
-                subtract_time = datetime.timedelta(days=int(hace[1]))
-            case _:
-                subtract_time = datetime.timedelta(minutes=0)
-    else:
-        subtract_time = datetime.timedelta(minutes=0)
-
-    dictionary['post_date'] = (datetime.datetime.now() - subtract_time).date()
-    dictionary['add_date'] = datetime.date.today()
-
-    description = soup.find("div", attrs={"class": "offer"})
-    dictionary[DESCRIPTION_K] = description.get_text().replace("Descripción de la oferta", "")
-
-    dictionary['requirement_min'] = description.find_all("pre")[1].get_text()
-
-    # return dictionary
-    # TODO: cambiar para recibir petición de api clases como Parametro
-
-    Offer.from_scrapped(dictionary, Source.INFO_EMPLEO, petition.mongo_id).save()
-    # return Job.from_scrapped(dictionary, Source.INFO_EMPLEO, petition.mongo_id).to_mongo()
-    # return dictionary
+        logging.error(f"There was an unexpected error scraping infoempleo {url}: {e}")
 
 
-# TODO: put in utilities
 def absolute_url(url):
     """Return the absolute url of the infoempleo page.
 

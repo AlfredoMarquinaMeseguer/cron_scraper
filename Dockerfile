@@ -10,14 +10,16 @@ COPY . /app/.
 RUN pip3 install -r /app/requirements.txt
 
 # Add the cron job
-RUN crontab /app/cron-test.txt
+RUN chmod 777 /app/crontab && crontab /app/crontab
 
-#COPY cron-test.txt /etc/cron.d/cron-test.txt
-#RUN chmod 0644 /etc/cron.d/cron-test.txt && crontab /etc/cron.d/cron-test.txt
+# COPY crontab /etc/cron.d/crontab
+# RUN chmod 0644 /etc/cron.d/crontab && crontab /etc/cron.d/crontab
+# Connect to internet
+docker run --net=host -it ubuntu
 
 # Start the cron service and run the script
 
 # CMD service cron start  &&
-CMD ip -a &&  python3 /app/main.py
+CMD ip -a &&  python3 /app/main.py && service cron start
 
 #ENTRYPOINT ["bash", "-c", "service cron start && /app"]

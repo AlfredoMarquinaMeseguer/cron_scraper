@@ -3,7 +3,7 @@ import json
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from classes.dao import Offer, Source, Petition
-from offer_scraper.scrapers.utils import common
+from scrapers.utils import common
 
 
 async def scrap(petition: Petition):

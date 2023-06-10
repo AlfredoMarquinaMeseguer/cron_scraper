@@ -1,0 +1,2 @@
+0 0 * * * /usr/local/bin/python3 /app/master_of_scrapers.py
+# @daily /usr/local/bin/python3 /app/master_of_scrapers.py

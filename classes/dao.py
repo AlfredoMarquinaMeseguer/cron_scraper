@@ -6,15 +6,13 @@ Offer:
 import copy
 import datetime
 import re
-from typing import Any
-
+from typing import Any, Optional
 import pymongo
 from datetime import date
 import bson
 from pydantic import BaseModel
 from dateutil import parser
 import enum
-
 from classes import mongo_conn, connect_to_users
 
 API_VALID_TYPES = (bool, bytes, float, int, str)
@@ -29,7 +27,7 @@ def to_api(x: Any) -> dict:
     return_dict: dict = {}
     for key, value in dict(x).items():
         # Ignore the ObjectId because we don't want THEM to know...
-        if value is not None and not isinstance(value, ObjectId):
+        if value is not None and not isinstance(value, ObjectId2):
             if isinstance(value, API_VALID_TYPES):
                 return_dict[key]: dict[str: any] = __api_format__(value)
             elif isinstance(value, enum.Enum):  # for enums
@@ -57,7 +55,7 @@ class Source(enum.Enum):
     TECNO_EMPLEO = "www.tecnompleo.com"
 
 
-class ObjectId(bson.ObjectId):
+class ObjectId2(bson.ObjectId):
     @classmethod
     def __get_validators__(cls):
         yield cls.validate
@@ -105,16 +103,17 @@ ID_IJ = 'id'
 UPDATED = 'updated'
 PUBLISHED = 'published'
 
+# ************* Constants *************
+SCHEMA = '__annotations__'
+SCHEMA_WRONG_TYPE_MESSAGE = 'The element with key {} is not an instance of {} is and instance of {}. Fix that'
+SCHEMA_WRONG_KEY_MESSAGE = "Key {} not in schema keys: {}"
+
 
 class Offer(BaseModel):
-    # ************* Constants *************
-    SCHEMA = '__annotations__'
-    SCHEMA_WRONG_TYPE_MESSAGE = 'The element with key {} is not an instance of {} is and instance of {}. Fix that'
-    SCHEMA_WRONG_KEY_MESSAGE = "Key {} not in schema keys: {}"
     # ************* Attributes *************
-    mongo_id: ObjectId | None = None  # ID in mongo db
+    mongo_id: ObjectId2 | None = None  # ID in mongo db
     id: str | None = None  # ID in source db
-    petition_id: ObjectId | None = None
+    petition_id: ObjectId2 | None = None
     source: Source | None = None  # Page form where the printable comes
     title: str | None = None  # Relevant information
     company: str | None = None
@@ -212,7 +211,7 @@ class Offer(BaseModel):
 
     @classmethod
     def from_scrapped(cls, data: dict[str, str | datetime.date | int], source: Source,
-                      petition: ObjectId | None = None):
+                      petition: ObjectId2 | None = None):
         """
         Creates an object from `data`, considering it comes from the source `source`. Quick guide to erros:
         - KeyError: dictionary `data` malformed
@@ -227,14 +226,12 @@ class Offer(BaseModel):
             case Source.INFO_JOBS:
                 return_value = cls.from_infojobs(data)
             case Source.TALENT | Source.INFO_EMPLEO | Source.WE_HIRING | Source.TECNO_EMPLEO:
-                return_value = cls(**data, source=source)
+                return_value = cls(**data, source=source, petition_id=ObjectId2(petition))
             case _:
                 # TODO: hacer algo mejor aquí
                 message = "Not a valid source. WTF, list of sources {}".format(
                     str(Source.__dict__.get("_member_names_")))
                 raise TypeError(message)
-
-        return_value.petition_id = petition
 
         return return_value
         # ***************************************  Output methods *************************************** #
@@ -286,6 +283,7 @@ class Offer(BaseModel):
         :param collection: collection where the objects is to be saved
         :return: The update result of mongo
         """
+        # DELETE = ["SCHEMA", "SCHEMA_WRONG_TYPE_MESSAGE", "SCHEMA_WRONG_TYPE_MESSAGE"]
         if collection is None:
             # TODO: esto se debería meter en un fichero
             collection = mongo_conn.connect_to_offers()
@@ -297,7 +295,10 @@ class Offer(BaseModel):
 
         mongo_dict = self.to_mongo()
         import classes.offer_consts as offer
-        mongo_dict[offer.UPDATE_DATE] = date.today()
+
+        mongo_dict[offer.UPDATE_DATE] = str(date.today())
+        mongo_dict[offer.PETITION] = bson.ObjectId(str(mongo_dict[offer.PETITION]))
+
         return collection.update_one(mongo_filter, {'$set': mongo_dict}, upsert=True)
 
     # ******************************************* Validator methods ******************************************* #
@@ -306,48 +307,47 @@ class Offer(BaseModel):
         Validates that all the types are correct.
         :return: If mistakes and mistakes made.
         """
-        schema: dict = Offer.__dict__.get(Offer.SCHEMA)
+        schema: dict = Offer.__dict__.get(SCHEMA)
         # validator: bool = True
         mistakes: [str] = []
         for key, value in self.__dict__.items():
             # print(type(annotations.get(key)), key) # Para info por si se necesita
             if not isinstance(value, schema.get(key) | None):
                 mistakes.append(
-                    Offer.SCHEMA_WRONG_TYPE_MESSAGE.format(key, schema.get(key).__name__, type(value).__name__))
+                    SCHEMA_WRONG_TYPE_MESSAGE.format(key, schema.get(key).__name__, type(value).__name__))
 
         return mistakes == [], mistakes
 
     @staticmethod
     def validate_input(input_data: dict) -> (bool, [str]):
 
-        schema: dict = Offer.__dict__.get(Offer.SCHEMA)
+        schema: dict = Offer.__dict__.get(SCHEMA)
         mistakes: [str] = []
         for key, value in input_data.items():
             # print(type(annotations.get(key)), key) # Para info por si se necesita
             if not isinstance(value, schema.get(key) | None):
                 mistakes.append(
-                    Offer.SCHEMA_WRONG_TYPE_MESSAGE.format(key, schema.get(key).__name__, type(value).__name__))
+                    SCHEMA_WRONG_TYPE_MESSAGE.format(key, schema.get(key).__name__, type(value).__name__))
             elif key not in schema.keys():
-                mistakes.append(Offer.SCHEMA_WRONG_KEY_MESSAGE.format(key, schema.keys()))
+                mistakes.append(SCHEMA_WRONG_KEY_MESSAGE.format(key, schema.keys()))
 
         return mistakes == [], mistakes
 
 
 class Petition(BaseModel):
-    mongo_id: ObjectId | None = None
-    user: str = "anon"
     creation_datetime: datetime.datetime
     query: str
-    location: str | None = None
+    user: str = "anon"
+    location: Optional[str]
     disabled: bool = False
+    mongo_id: ObjectId2 | None = None
 
     @classmethod
     def from_mongo(cls, input_dict: dict):
         mongo_dict = copy.deepcopy(input_dict)
-
         if "_id" in mongo_dict.keys():
-            mongo_dict["mongo_id"] = mongo_dict.pop("_id")
-
+            mongo_id = ObjectId2(str(mongo_dict.pop("_id")))
+            mongo_dict["mongo_id"] = mongo_id
         return cls(**mongo_dict)
 
     def to_mongo(self):
@@ -381,12 +381,35 @@ class Permission(enum.Enum):
 
 
 class User(BaseModel):
-    mongo_id: ObjectId | None = None
+    mongo_id: ObjectId2 | None = None
     username: str
     email: str | None = None
     full_name: str | None = None
     disabled: bool | None = None
-    permits: list[Permission] = []
+    permits: list[Permission]
+
+    @classmethod
+    def from_mongo(cls, input_dict: dict):
+        mongo_dict = copy.deepcopy(input_dict)
+        if "_id" in mongo_dict.keys():
+            mongo_id = ObjectId2(str(mongo_dict.pop("_id")))
+            mongo_dict["mongo_id"] = mongo_id
+        return cls(**mongo_dict)
+
+    def to_mongo(self):
+        dictionary = {}
+        for key, value in dict(self).items():
+            if value is not None:
+                dictionary[key] = value
+
+        if "mongo_id" in dictionary.keys():
+            dictionary["_id"] = dictionary.pop("mongo_id")
+
+        return dictionary
+
+    def save(self):
+        mfilter = {"user": self.username}
+        return mongo_conn.connect_to_petitions().update_one(mfilter, {'$set': self.to_mongo()}, upsert=True)
 
 
 class UserInDB(User):
@@ -396,11 +419,12 @@ class UserInDB(User):
         return {key: value for key, value in dict(self).items() if value is not None}
 
     def save(self):
+        print("save")
         mongo_filter = {
             "username": self.username
         }
-
-        if self.mongo_id is not None:
-            mongo_filter["_id"] = self.mongo_id
-
-        return connect_to_users().update_one(mongo_filter, {"$set": self.to_mongo()}, upsert=True)
+        user_conn = connect_to_users()
+        print(user_conn.find_one(mongo_filter))
+        if user_conn.find_one(mongo_filter) is None:
+            return user_conn.insert_one(self.to_mongo())
+        return None

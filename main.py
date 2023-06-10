@@ -13,8 +13,7 @@ def imprime_hora():
 
 
 if __name__ == "__main__":
-    print("hola 1")
-    schedule.every(5).seconds.do(imprime.prueba)
+    schedule.every(1).day.do(imprime.prueba)
 
     while True:
         schedule.run_pending()
